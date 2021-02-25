@@ -12,104 +12,54 @@
 
 #include "get_next_line_bonus.h"
 
-char    *ft_strdup(const char *s1)
+int	find_index(const char *s, int c)
 {
-    char    *new;
-    ssize_t i;
+	int	i;
 
-    new = ft_strnew(ft_strlen(s1));
-    if (new == NULL)
-        return (NULL);
-    i = -1;
-    while (s1[++i])
-        new[i] = s1[i];
-    return (new);
+	i = 0;
+	while (s[i] && s[i] != (char)c)
+		i++;
+	if (s[i] != (char)c)
+		return (-1);
+	return (i);
 }
 
-char    *ft_strchr(const char *s, int c)
+int	get_line(char *str, char **line, int i)
 {
-    unsigned char   cc;
+	int	len;
 
-    cc = (unsigned char)c;
-    while (*s)
-    {
-        if (*s == cc)
-            return ((char *)s);
-        s++;
-    }
-    if (c == '\0')
-        return ((char *)s);
-    return (NULL);
+	*line = ft_substr(str, 0, i);
+	++i;
+	len = ft_strlen(str + i) + 1;
+	ft_memmove(str, str + i, len);
+	return (1);
 }
 
-char    *ft_strjoin(char const *s1, char const *s2)
+int	get_next_line(int fd, char **line)
 {
-    size_t  ln_s1;
-    size_t  ln_s2;
-    char    *s3;
+	char		buff[BUFFER_SIZE + 1];
+	static char	*str[OPEN_MAX];
+	int			ret;
+	int			i;
 
-    if (!s1 || !s2)
-        return (NULL);
-    ln_s1 = ft_strlen(s1);
-    ln_s2 = ft_strlen(s2);
-    s3 = malloc(sizeof(char) * (ln_s1 + ln_s2 + 1));
-    if (s3 == NULL)
-        return (NULL);
-    while (*s1)
-        *(s3++) = *(s1++);
-    while (*s2)
-        *(s3++) = *(s2++);
-    *s3 = '\0';
-    return (s3 - (ln_s1 + ln_s2));
+	if (!line || fd < 0 || BUFFER_SIZE < 1 || read(fd, buff, 0) < 0)
+		return (-1);
+	if (str[fd] && (((i = find_index(str[fd], '\n')) != -1)))
+		return (get_line(str[fd], line, i));
+	while (((ret = read(fd, buff, BUFFER_SIZE)) > 0))
+	{
+		buff[ret] = '\0';
+		str[fd] = joiner_free(str[fd], buff);
+		if (((i = find_index(str[fd], '\n')) != -1))
+			return (get_line(str[fd], line, i));
+	}
+	if (str[fd])
+	{
+		*line = ft_strdup(str[fd]);
+		free(str[fd]);
+		str[fd] = NULL;
+		return (ret);
+	}
+	*line = ft_strdup("");
+	return (ret);
 }
-
-char    *ft_substr(char const *s, unsigned int start, size_t len)
-{
-    size_t  i;
-    char    *str;
-
-    i = 0;
-    if (!s || (long int)len < 0)
-        return (NULL);
-    str = (char *)malloc(len + 1);
-    if (str == NULL)
-        return (NULL);
-    while (start < ft_strlen(s) && i < len)
-    {
-        str[i] = s[start];
-        i++;
-        start++;
-    }
-    str[i] = '\0';
-    return (str);
-}
-
-int     get_next_line(int fd, char **line)
-{
-    ssize_t     r;
-    char        bf[BUFFER_SIZE + (r = 1)];
-    static char *lr[FD_SIZE];
-    char        *tmp;
-
-    if (fd < 0 || !line || BUFFER_SIZE <= 0)
-        return (-1);
-    lr[fd] == NULL ? lr[fd] = ft_strnew(0) : NULL;
-    while (!ft_strchr(lr[fd], '\n') && (r = read(fd, bf, BUFFER_SIZE)) > 0)
-    {
-        bf[r] = '\0';
-        tmp = ft_strjoin(lr[fd], bf);
-        ft_memdel((void **)&lr[fd]);
-        lr[fd] = tmp;
-    }
-    if (r == 0)
-        *line = ft_strdup(lr[fd]);
-    else if (r > 0)
-        *line = ft_substr(lr[fd], 0, (ft_strchr(lr[fd], '\n') - lr[fd]));
-    else
-        return (-1);
-    tmp = ft_strdup(lr[fd] + (ft_strlen(*line) + ((r > 0) ? +1 : +0)));
-    ft_memdel((void **)&lr[fd]);
-    lr[fd] = tmp;
-    return (r == 0 ? 0 * ft_memdel((void **)&lr[fd]) : 1);
-}
-

@@ -12,116 +12,55 @@
 
 #include "get_next_line.h"
 
-char    *ft_strdup(const char *s1)
+//find index of our '\n'. Return (-1) if we don't find it
+int	find_index(const char *s, int c)
 {
-    char    *new;
-    ssize_t i;
+	int	i;
 
-    new = ft_strnew(ft_strlen(s1));
-    if (new == NULL)
-        return (NULL);
-    i = -1;
-    while (s1[++i])
-        new[i] = s1[i];
-    return (new);
+	i = 0;
+	while (s[i] && s[i] != (char)c)
+		i++;
+	if (s[i] != (char)c)
+		return (-1);
+	return (i);
 }
 
-char    *ft_strchr(const char *s, int c)
+int	get_line(char *str, char **line, int i)
 {
-    unsigned char   cc;
+	int	len;
 
-    cc = (unsigned char)c;
-    while (*s)
-    {
-        if (*s == cc)
-            return ((char *)s);
-        s++;
-    }
-    if (c == '\0')
-        return ((char *)s);
-    return (NULL);
+	*line = ft_substr(str, 0, i);		// Assign to 'line' what is in 'str'. The 'i' is the index of our '\n'
+	++i;								// Move index 1 position after '\n'
+	len = ft_strlen(str + i) + 1;		// Len of string after first '\n'. +1 to include '\0'
+	ft_memmove(str, str + i, len);		// Move what's after the first '\n' to the beginning of 'str'
+	return (1);							// Always return (1), we call get_line only if a '\n' was found
 }
 
-char    *ft_strjoin(char const *s1, char const *s2)
+int	get_next_line(int fd, char **line)
 {
-    size_t  ln_s1;
-    size_t  ln_s2;
-    char    *s3;
+	char		buff[BUFFER_SIZE + 1];
+	static char	*str;
+	int			ret;
+	int			i;
 
-    if (!s1 || !s2)
-        return (NULL);
-    ln_s1 = ft_strlen(s1);
-    ln_s2 = ft_strlen(s2);
-    s3 = malloc(sizeof(char) * (ln_s1 + ln_s2 + 1));
-    if (s3 == NULL)
-        return (NULL);
-    while (*s1)
-        *(s3++) = *(s1++);
-    while (*s2)
-        *(s3++) = *(s2++);
-    *s3 = '\0';
-    return (s3 - (ln_s1 + ln_s2));
+	if (!line || fd < 0 || BUFFER_SIZE < 1 || read(fd, buff, 0) < 0)	// Look for basic errors. Read 0 to look for errors without moving our cursor
+		return (-1);
+	if (str && (((i = find_index(str, '\n')) != -1)))		// If there's '\n' at the index 'i' in 'str' we call get_line()
+		return (get_line(str, line, i));
+	while (((ret = read(fd, buff, BUFFER_SIZE)) > 0))		// While we didn't reach EOF we read in buff. 'ret' will get the number of bytes read, and 1 char = 1 byte
+	{
+		buff[ret] = '\0';
+		str = joiner_free(str, buff);				// Join 'buff' with 'str' and free the old 'str' to avoid memory leaks.
+		if (((i = find_index(str, '\n')) != -1))	// If there's a '\n' in str, keep note of its position in 'str' in our index 'i'. If no, we'll go back to the beginning of the loop
+			return (get_line(str, line, i));
+	}
+	if (str)		// That's for when already reached EOF, and there are no '\n' in static 'str' but still some text
+	{
+		*line = ft_strdup(str);	// We simply strdup what's left in 'str'
+		free(str);
+		str = NULL;				// NULL after a malloc
+		return (ret);
+	}
+	*line = ft_strdup("");		// Make an empty line in case GNL is called after finish reading the file, and line was not freed
+	return (ret);
 }
-
-char    *ft_substr(char const *s, unsigned int start, size_t len)
-{
-    size_t  i;
-    char    *str;
-
-    i = 0;
-    if (!s || (long int)len < 0)
-        return (NULL);
-    str = (char *)malloc(len + 1);
-    if (str == NULL)
-        return (NULL);
-    while (start < ft_strlen(s) && i < len)
-    {
-        str[i] = s[start];
-        i++;
-        start++;
-    }
-    str[i] = '\0';
-    return (str);
-}
-
-int     get_next_line(int fd, char **line)
-{
-    ssize_t     r;
-    char        bf[BUFFER_SIZE + (r = 1)];
-    static char *c_line = NULL;
-    char        *tmp;
-
-    if (fd < 0 || !line || BUFFER_SIZE <= 0)
-        return (-1);
-    c_line == NULL ? c_line = ft_strnew(0) : NULL;
-    while (!ft_strchr(c_line, '\n') && (r = read(fd, bf, BUFFER_SIZE)) > 0)
-    {
-        bf[r] = '\0';
-        tmp = ft_strjoin(c_line, bf);
-        ft_memdel((void **)&c_line);
-        c_line = tmp;
-    }
-    if (r == 0)
-        *line = ft_strdup(c_line);
-    else if (r > 0)
-        *line = ft_substr(c_line, 0, (ft_strchr(c_line, '\n') - c_line));
-    else
-        return (-1);
-    tmp = ft_strdup(c_line + (ft_strlen(*line) + ((r > 0) ? +1 : +0)));
-    ft_memdel((void **)&c_line);
-    c_line = tmp;
-    return (r == 0 ? 0 * ft_memdel((void **)&c_line) : 1);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
